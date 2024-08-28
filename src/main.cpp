@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include <Servo.h>
 
-#define TRIG_PIN D0  // GPIO 5 for Trigger
+#define TRIG_PIN D7  // GPIO 5 for Trigger
 #define ECHO_PIN D5  // GPIO 4 for Echo
 #define SERVO_PIN D6 // GPIO 14 for Servo
 
@@ -10,24 +10,16 @@
 #define MOTOR_B_IN1 D2 // GPIO 15 for Motor B Input 1
 #define MOTOR_B_IN2 D4 // GPIO 3 for Motor B Input 2
 
-/*
-Board uses 4 pins to control motors. PWMA, PWMB- speed of motors.
-DA, DB-direction of motors(0-straight;1-reverse).
-Here pinout for NodeMcu Amica.
-    PWMA-GPIO5(D20)
-    PWMB-GPIO4(D19)
-    DA-GPIO0(18)
-    DB-GPIO2(17)
-int PWMA=5;//Right side
-int PWMB=4;//Left side
-int DA=0;//Right reverse
-int DB=2;//Left reverse
-*/
-
-#define NUM_READINGS 19  // Number of rejadings across the 180-degree arc
+#define NUM_READINGS 19  // Number of readings across the 180-degree arc
 #define SAFE_DISTANCE 50 // Safe distance in centimeters
 
 const bool DEMO_MODE = false;
+const bool TESTING = true; // Define this for simulation mode
+
+#ifdef TESTING
+#include "Simulator.h"
+Simulator simulator(20, 20); // Initialize simulator with room size 20x20
+#endif
 
 Servo ultraServo;
 long distances[NUM_READINGS]; // Array to hold distance measurements
@@ -36,14 +28,13 @@ long distances[NUM_READINGS]; // Array to hold distance measurements
 const int baseSpeed = 200; // Base speed, can be set from 0 (stopped) to 255 (full speed)
 
 // Speed multiplier (percentage, range from 0.0 to 1.0)
-const float speedMultiplier = 0.15; // Default to 50% speed
+const float speedMultiplier = 0.15; // Default to 15% speed
 // Adjust speeds based on multiplier
 int adjustedSpeed = baseSpeed * speedMultiplier;
 
 long measureDistance()
 {
   const float SOUND_SPEED_DIVISOR = 29.1;
-
   long duration, distance;
   digitalWrite(TRIG_PIN, LOW);
   delayMicroseconds(2);
@@ -54,6 +45,25 @@ long measureDistance()
   distance = (duration / 2) / SOUND_SPEED_DIVISOR; // Calculate distance in cm
   return distance;
 }
+
+#ifdef TESTING
+void scanSurroundingsSimulator()
+{
+  int angleStep = 180 / (NUM_READINGS - 1);
+  for (int i = 0; i < NUM_READINGS; i++)
+  {
+    int angle = -90 + i * angleStep;
+    ultraServo.write(90 + angle); // Servo position 0 to 180 corresponds to -90 to +90 degrees
+    delay(100);                   // Wait for the servo to reach the position
+    distances[i] = simulator.getDistance(angle);
+    Serial.print("Angle: ");
+    Serial.print(angle);
+    Serial.print(" - Distance: ");
+    Serial.print(distances[i]);
+    Serial.println(" cm");
+  }
+}
+#endif
 
 void scanSurroundings()
 {
@@ -130,9 +140,9 @@ void findBestDirection()
 void driveForward()
 {
   // Move forward
-  analogWrite(MOTOR_A_IN1, baseSpeed);
+  analogWrite(MOTOR_A_IN1, adjustedSpeed);
   digitalWrite(MOTOR_A_IN2, LOW);
-  analogWrite(MOTOR_B_IN1, baseSpeed);
+  analogWrite(MOTOR_B_IN1, adjustedSpeed);
   digitalWrite(MOTOR_B_IN2, LOW);
   delay(500);
 }
@@ -140,9 +150,9 @@ void driveForward()
 void driveBackward()
 {
   // Move backward
-  analogWrite(MOTOR_A_IN1, baseSpeed);
+  analogWrite(MOTOR_A_IN1, adjustedSpeed);
   digitalWrite(MOTOR_A_IN2, HIGH);
-  analogWrite(MOTOR_B_IN1, baseSpeed);
+  analogWrite(MOTOR_B_IN1, adjustedSpeed);
   digitalWrite(MOTOR_B_IN2, HIGH);
   delay(500);
 }
@@ -174,7 +184,6 @@ void dance()
 
 void demoDriveAbitAround()
 {
-
   // Move forward
   driveForward();
   // Stop for a moment
@@ -217,13 +226,20 @@ void loop()
     return;
   }
 
-  Serial.println("distance in meters is: ");
-  Serial.println(measureDistance());
+  if (TESTING)
+  {
+    scanSurroundingsSimulator();
+  }
+  else
+  {
+    Serial.println("distance in meters is: ");
+    Serial.println(measureDistance());
 
-  // Sweep the servo and measure distances
-  scanSurroundings();
+    // Sweep the servo and measure distances
+    scanSurroundings();
 
-  // Determine the best direction and act on it
-  findBestDirection();
-  driveForward();
+    // Determine the best direction and act on it
+    findBestDirection();
+    driveForward();
+  }
 }
