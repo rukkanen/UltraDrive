@@ -1,7 +1,8 @@
 #include <Arduino.h>
 #include <Servo.h>
+#include <logger.h>
 
-#define TRIG_PIN D0  // GPIO 5 for Trigger
+#define TRIG_PIN D7  // GPIO 5 for Trigger
 #define ECHO_PIN D5  // GPIO 4 for Echo
 #define SERVO_PIN D6 // GPIO 14 for Servo
 
@@ -27,6 +28,8 @@ int DB=2;//Left reverse
 #define NUM_READINGS 19  // Number of rejadings across the 180-degree arc
 #define SAFE_DISTANCE 50 // Safe distance in centimeters
 
+#define log Logger::log;
+
 const bool DEMO_MODE = false;
 
 Servo ultraServo;
@@ -42,6 +45,7 @@ int adjustedSpeed = baseSpeed * speedMultiplier;
 
 long measureDistance()
 {
+  log(INFO, "Measuring distance");
   const float SOUND_SPEED_DIVISOR = 29.1;
 
   long duration, distance;
@@ -64,11 +68,7 @@ void scanSurroundings()
     ultraServo.write(90 + angle); // Servo position 0 to 180 corresponds to -90 to +90 degrees
     delay(100);                   // Wait for the servo to reach the position
     distances[i] = measureDistance();
-    Serial.print("Angle: ");
-    Serial.print(angle);
-    Serial.print(" - Distance: ");
-    Serial.print(distances[i]);
-    Serial.println(" cm");
+    log("Angle: " + String(angle) + " - Distance: " + distances[i] + " cm");
   }
 }
 
@@ -91,10 +91,7 @@ void findBestDirection()
   int angleStep = 180 / (NUM_READINGS - 1);
   int turnAngle = -90 + bestDirection * angleStep;
 
-  Serial.print("Best direction: ");
-  Serial.print(turnAngle);
-  Serial.print(" degrees with average distance: ");
-  Serial.println(maxAverageDistance);
+  log(INFO, "Best direction: " + String(turnAngle) + " degrees with average distance: " + maxAverageDistance);
 
   // Slow down and turn towards the best direction
   if (maxAverageDistance < SAFE_DISTANCE)
@@ -129,6 +126,7 @@ void findBestDirection()
 
 void driveForward()
 {
+  log(INFO, "Driving forward");
   // Move forward
   analogWrite(MOTOR_A_IN1, baseSpeed);
   digitalWrite(MOTOR_A_IN2, LOW);
@@ -139,6 +137,7 @@ void driveForward()
 
 void driveBackward()
 {
+  log(INFO, "Driving backward");
   // Move backward
   analogWrite(MOTOR_A_IN1, baseSpeed);
   digitalWrite(MOTOR_A_IN2, HIGH);
@@ -149,6 +148,7 @@ void driveBackward()
 
 void stopMotors()
 {
+  log(INFO, "Stopping motors");
   // Stop motors
   digitalWrite(MOTOR_A_IN1, LOW);
   digitalWrite(MOTOR_A_IN2, LOW);
@@ -158,6 +158,7 @@ void stopMotors()
 
 void dance()
 {
+  log(INFO, "Dancing");
   // Dance routine
   for (int i = 0; i < 4; i++)
   {
@@ -225,5 +226,5 @@ void loop()
 
   // Determine the best direction and act on it
   findBestDirection();
-  driveForward();
+  // driveForward();
 }
