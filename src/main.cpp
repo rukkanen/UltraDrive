@@ -14,8 +14,8 @@
 #define SAFE_DISTANCE 50 // Safe distance in centimeters
 
 const bool DEMO_MODE = false;
-const bool TESTING = true; // Define this for simulation mode
 
+#define TESTING 1
 #ifdef TESTING
 #include "Simulator.h"
 Simulator simulator(20, 20); // Initialize simulator with room size 20x20
@@ -46,7 +46,6 @@ long measureDistance()
   return distance;
 }
 
-#ifdef TESTING
 void scanSurroundingsSimulator()
 {
   int angleStep = 180 / (NUM_READINGS - 1);
@@ -63,7 +62,6 @@ void scanSurroundingsSimulator()
     Serial.println(" cm");
   }
 }
-#endif
 
 void scanSurroundings()
 {
@@ -106,94 +104,68 @@ void findBestDirection()
   Serial.print(" degrees with average distance: ");
   Serial.println(maxAverageDistance);
 
-  // Slow down and turn towards the best direction
+  // Simulate turning towards the best direction
   if (maxAverageDistance < SAFE_DISTANCE)
   {
-    // Stop motors
-    digitalWrite(MOTOR_A_IN1, LOW);
-    digitalWrite(MOTOR_A_IN2, LOW);
-    digitalWrite(MOTOR_B_IN1, LOW);
-    digitalWrite(MOTOR_B_IN2, LOW);
-    delay(1000); // Stop for a moment
-
-    // Turn towards the best direction
-    if (turnAngle > 0)
-    {
-      // Turn right
-      digitalWrite(MOTOR_A_IN1, HIGH);
-      digitalWrite(MOTOR_A_IN2, LOW);
-      digitalWrite(MOTOR_B_IN1, LOW);
-      digitalWrite(MOTOR_B_IN2, HIGH);
-    }
-    else
-    {
-      // Turn left
-      digitalWrite(MOTOR_A_IN1, LOW);
-      digitalWrite(MOTOR_A_IN2, HIGH);
-      digitalWrite(MOTOR_B_IN1, HIGH);
-      digitalWrite(MOTOR_B_IN2, LOW);
-    }
-    delay(1000); // Turn for a set period
+    simulator.turn(turnAngle);
   }
+}
+
+void simulateDriveForward()
+{
+  // Simulate moving forward
+  simulator.move(adjustedSpeed, 500); // Move for 500ms with adjusted speed
+}
+
+void simulateDriveBackward()
+{
+  // Simulate moving backward
+  simulator.move(-adjustedSpeed, 500); // Move backward for 500ms with adjusted speed
 }
 
 void driveForward()
 {
-  // Move forward
-  analogWrite(MOTOR_A_IN1, adjustedSpeed);
+  // Set motor A to move forward
+  digitalWrite(MOTOR_A_IN1, HIGH);
   digitalWrite(MOTOR_A_IN2, LOW);
-  analogWrite(MOTOR_B_IN1, adjustedSpeed);
+  // Set motor B to move forward
+  digitalWrite(MOTOR_B_IN1, HIGH);
   digitalWrite(MOTOR_B_IN2, LOW);
-  delay(500);
+  // Set motor speed
+  analogWrite(MOTOR_A_IN1, adjustedSpeed);
+  analogWrite(MOTOR_B_IN1, adjustedSpeed);
 }
 
 void driveBackward()
 {
-  // Move backward
-  analogWrite(MOTOR_A_IN1, adjustedSpeed);
+  // Set motor A to move backward
+  digitalWrite(MOTOR_A_IN1, LOW);
   digitalWrite(MOTOR_A_IN2, HIGH);
-  analogWrite(MOTOR_B_IN1, adjustedSpeed);
+  // Set motor B to move backward
+  digitalWrite(MOTOR_B_IN1, LOW);
   digitalWrite(MOTOR_B_IN2, HIGH);
-  delay(500);
+  // Set motor speed
+  analogWrite(MOTOR_A_IN1, adjustedSpeed);
+  analogWrite(MOTOR_B_IN1, adjustedSpeed);
 }
 
 void stopMotors()
 {
-  // Stop motors
-  digitalWrite(MOTOR_A_IN1, LOW);
-  digitalWrite(MOTOR_A_IN2, LOW);
-  digitalWrite(MOTOR_B_IN1, LOW);
-  digitalWrite(MOTOR_B_IN2, LOW);
-}
-
-void dance()
-{
-  // Dance routine
-  for (int i = 0; i < 4; i++)
-  {
-    // Move forward
-    driveForward();
-    // Turn right
-    digitalWrite(MOTOR_A_IN1, HIGH);
-    digitalWrite(MOTOR_A_IN2, LOW);
-    digitalWrite(MOTOR_B_IN1, LOW);
-    digitalWrite(MOTOR_B_IN2, HIGH);
-    delay(1000);
-  }
+  // In simulation, this would correspond to not moving
+  // Do nothing or just a small delay to simulate pause
+  delay(500);
 }
 
 void demoDriveAbitAround()
 {
-  // Move forward
-  driveForward();
+  // Simulate moving forward
+  simulateDriveForward();
   // Stop for a moment
   stopMotors();
-  // Move backward
-  driveBackward();
+  // Simulate moving backward
+  simulateDriveBackward();
   // Stop for a moment
   stopMotors();
-  // Dance
-  dance();
 }
 
 void setup()
@@ -229,6 +201,8 @@ void loop()
   if (TESTING)
   {
     scanSurroundingsSimulator();
+    findBestDirection();    // Find the best direction based on simulated data
+    simulateDriveForward(); // Simulate driving forward in the best direction
   }
   else
   {
